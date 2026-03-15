@@ -1,0 +1,111 @@
+{
+  "projectType": "api-service",
+  "projectName": "First Lego League Backend",
+  "projectDescription": "A Spring Boot REST API for managing First Lego League competitions, including teams, matches, scoring, leaderboards, volunteers, and edition lifecycle.",
+  "theme": "sequoia",
+  "primaryColor": "#E31837",
+  "lightColor": "#FF4D6B",
+  "darkColor": "#A80020",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart", "authentication"]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/editions",
+              "concepts/teams",
+              "concepts/matches",
+              "concepts/volunteers",
+              "concepts/scoring"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/running-locally",
+              "guides/deployment",
+              "guides/docker"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": ["api-reference/overview"]
+          },
+          {
+            "group": "Editions",
+            "pages": [
+              "api-reference/editions/list",
+              "api-reference/editions/lifecycle",
+              "api-reference/editions/teams",
+              "api-reference/editions/volunteers",
+              "api-reference/editions/tables"
+            ]
+          },
+          {
+            "group": "Matches",
+            "pages": [
+              "api-reference/matches/search",
+              "api-reference/matches/assignment",
+              "api-reference/matches/table-assignment",
+              "api-reference/matches/score-registration"
+            ]
+          },
+          {
+            "group": "Leaderboard",
+            "pages": ["api-reference/leaderboard/get-edition-leaderboard"]
+          },
+          {
+            "group": "Project Rooms",
+            "pages": ["api-reference/project-rooms/assign-judge"]
+          },
+          {
+            "group": "Users",
+            "pages": [
+              "api-reference/users/register",
+              "api-reference/users/identity"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Edition lifecycle management (DRAFT → OPEN → CLOSED)",
+    "Team registration and management per edition (up to 18 teams)",
+    "Match scheduling with referee assignment and table assignment",
+    "Score registration and automatic ranking/leaderboard recalculation",
+    "Volunteer management with role validation (Judge/Referee conflict prevention)",
+    "Project Room judge assignment",
+    "Match search and filtering by time, table, and round",
+    "HAL/HATEOAS REST API with Spring Data REST",
+    "OpenAPI/Swagger documentation via SpringDoc",
+    "HTTP Basic authentication with Spring Security"
+  ],
+  "publicApiSurface": [
+    "GET /leaderboards/editions/{editionId}",
+    "PATCH /editions/{editionId}/state",
+    "POST /editions/{editionId}/teams/{teamId}",
+    "GET /editions/{editionId}/volunteers",
+    "GET /editions/{editionId}/tables",
+    "GET /matches/filter",
+    "GET /matches/search/findByTeam",
+    "POST /matches/{matchId}/assign-table",
+    "POST /matchAssignments/assign",
+    "POST /matchAssignments/batch",
+    "POST /matchResults/register",
+    "POST /project-rooms/assign-judge",
+    "GET /identity",
+    "POST /users"
+  ]
+}
