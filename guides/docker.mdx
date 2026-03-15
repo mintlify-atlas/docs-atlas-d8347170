@@ -1,0 +1,126 @@
+---
+title: "Docker"
+description: "Build and run the First Lego League Backend as a Docker container, and compose it with a PostgreSQL database for local development."
+---
+
+## Dockerfile
+
+The repository includes a multi-stage `Dockerfile` that builds the JAR and packages it into a minimal runtime image:
+
+```dockerfile
+# Build stage
+FROM maven:3.9.12-ibm-semeru-21-noble AS build
+WORKDIR /app
+COPY pom.xml .
+RUN mvn -B -q dependency:go-offline
+COPY src ./src
+RUN mvn -B -q package -DskipTests -Dcheckstyle.skip=true
+
+# Runtime stage
+FROM ibm-semeru-runtimes:open-21-jre-noble
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
+EXPOSE 8080
+CMD ["java", "-Dspring.profiles.active=prod", "-jar", "app.jar"]
+```
+
+The build stage uses Maven 3.9 on IBM Semeru JDK 21. The runtime stage uses only the IBM Semeru JRE 21, keeping the final image smaller. The container exposes **port 8080** and starts the application with the `prod` Spring profile active by default.
+
+## Build and run
+
+<Steps>
+  <Step title="Build the Docker image">
+    ```bash
+    docker build -t fll-backend .
+    ```
+  </Step>
+
+  <Step title="Run the container">
+    The default `prod` profile requires a PostgreSQL database. Pass your database and mail configuration as environment variables:
+
+    ```bash
+    docker run -d \
+      --name fll-backend \
+      -p 8080:8080 \
+      -e SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5432/fll \
+      -e SPRING_DATASOURCE_USERNAME=fll_user \
+      -e SPRING_DATASOURCE_PASSWORD=your_db_password \
+      -e SPRING_MAIL_HOST=smtp.example.com \
+      -e SPRING_MAIL_PORT=587 \
+      -e SPRING_MAIL_USERNAME=user@example.com \
+      -e SPRING_MAIL_PASSWORD=your_mail_password \
+      -e DEFAULT_PASSWORD=your_seed_password \
+      fll-backend
+    ```
+
+    To use a different Spring profile, override `SPRING_PROFILES_ACTIVE`:
+
+    ```bash
+    docker run -d \
+      --name fll-backend \
+      -p 8080:8080 \
+      -e SPRING_PROFILES_ACTIVE=default \
+      fll-backend
+    ```
+
+    Using `SPRING_PROFILES_ACTIVE=default` starts the app with the H2 in-memory database — no external database needed.
+  </Step>
+
+  <Step title="Access the API">
+    Once the container is running, the API is available at `http://localhost:8080`.
+
+    - **Swagger UI** — [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+    - **HAL Explorer** — [http://localhost:8080/explorer](http://localhost:8080/explorer)
+  </Step>
+</Steps>
+
+## Docker Compose for local development
+
+The following `docker-compose.yml` starts the backend together with a PostgreSQL database, wiring them up automatically:
+
+```yaml
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: fll
+      POSTGRES_USER: fll_user
+      POSTGRES_PASSWORD: fll_password
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fll_user -d fll"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/fll
+      SPRING_DATASOURCE_USERNAME: fll_user
+      SPRING_DATASOURCE_PASSWORD: fll_password
+      DEFAULT_PASSWORD: password
+    depends_on:
+      db:
+        condition: service_healthy
+```
+
+Start the stack:
+
+```bash
+docker compose up --build
+```
+
+Stop and remove containers:
+
+```bash
+docker compose down
+```
+
+<Note>
+  The `SPRING_PROFILES_ACTIVE` environment variable controls which Spring profile the container uses. Set it to `prod` to connect to PostgreSQL (the default in the `Dockerfile`), or to `default` to use the H2 in-memory database without any external dependencies.
+</Note>

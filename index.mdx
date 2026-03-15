@@ -1,97 +1,79 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "First Lego League Backend"
+description: "REST API for managing First Lego League competitions — teams, matches, scoring, leaderboards, and more."
 ---
 
-## Setting up
-
-Get your documentation site up and running in minutes.
-
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get the API running locally in minutes.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Authentication" icon="lock" href="/authentication">
+    Learn how HTTP Basic auth works across all endpoints.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Explore every endpoint with parameters and examples.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="Core Concepts" icon="book" href="/concepts/editions">
+    Understand editions, teams, matches, and scoring.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## What is First Lego League Backend?
 
-Everything you need to create world-class documentation.
+The First Lego League Backend is a Spring Boot REST API that powers the FLL Igualada competition platform. It handles all event management and scoring logic so organizers, volunteers, judges, and participants can coordinate efficiently during a live competition.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+<Info>
+  The API is deployed at [https://spring-template.fly.dev](https://spring-template.fly.dev) and is backed by a PostgreSQL database in production and H2 in development.
+</Info>
 
-## Need inspiration?
+## Key features
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+<CardGroup cols={2}>
+  <Card title="Edition lifecycle" icon="calendar" href="/concepts/editions">
+    Manage competition editions through DRAFT → OPEN → CLOSED states with enforced business rules.
+  </Card>
+  <Card title="Team management" icon="users" href="/concepts/teams">
+    Register up to 18 teams per edition with coach assignments and educational center tracking.
+  </Card>
+  <Card title="Match scheduling" icon="trophy" href="/concepts/matches">
+    Schedule matches across rounds and competition tables with unique matchmaking constraints.
+  </Card>
+  <Card title="Live scoring" icon="star" href="/concepts/scoring">
+    Register match scores and automatically recalculate global rankings and leaderboards.
+  </Card>
+  <Card title="Volunteer management" icon="hand" href="/concepts/volunteers">
+    Assign judges, referees, and floaters to editions with role conflict validation.
+  </Card>
+  <Card title="Project rooms" icon="door-open" href="/api-reference/project-rooms/assign-judge">
+    Manage judge panel assignments to project evaluation rooms.
+  </Card>
+</CardGroup>
+
+## Technology stack
+
+| Component | Technology |
+|-----------|-----------|
+| Framework | Spring Boot 4.0 (Java 21) |
+| Persistence | Spring Data JPA + PostgreSQL / H2 |
+| API style | HAL/HATEOAS via Spring Data REST |
+| Auth | HTTP Basic (Spring Security) |
+| OpenAPI | SpringDoc OpenAPI 3.0 |
+| Tests | Cucumber BDD (Gherkin feature files) |
+| Container | Docker |
+
+## Who uses this API?
+
+<CardGroup cols={2}>
+  <Card title="Organizers & Admins" icon="shield">
+    Create editions, manage competition tables and rounds, generate match schedules, and view assessment sheets.
+  </Card>
+  <Card title="Judges" icon="clipboard">
+    Get assigned to project rooms, fill assessment sheets, and evaluate scientific projects.
+  </Card>
+  <Card title="Referees" icon="flag">
+    Get assigned to matches, record results, and confirm scores.
+  </Card>
+  <Card title="Participants & Spectators" icon="eye">
+    View live leaderboards, match schedules, team profiles, and multimedia gallery content.
+  </Card>
+</CardGroup>

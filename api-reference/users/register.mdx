@@ -1,0 +1,99 @@
+---
+title: "Register a user"
+description: "Create a new user account using POST /users. No authentication is required."
+---
+
+**POST** `/users` — no authentication required
+
+Creates a new user account. This is the only endpoint in the API that accepts anonymous requests for write operations. After registration the user can authenticate using Basic auth credentials.
+
+<Info>
+  Passwords are stored using BCrypt hashing. The plaintext password is never persisted or returned.
+</Info>
+
+## Request body
+
+<ParamField body="username" type="string" required>
+  The username for the account. Acts as the unique identifier (`id`) for the user resource. Must not be blank.
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  A valid email address. Must be unique across all accounts.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  The account password. Must be between 8 and 256 characters long. Write-only — never returned in responses.
+</ParamField>
+
+## Response
+
+Returns `201 Created` with the newly created user resource in Spring Data REST HAL format.
+
+<ResponseField name="email" type="string" required>
+  The email address of the registered user.
+</ResponseField>
+
+<ResponseField name="_links" type="object" required>
+  HAL links to the user resource and related endpoints.
+</ResponseField>
+
+<Note>
+  The `password` field is write-only and is never included in any response body.
+</Note>
+
+## Example
+
+```bash
+curl -X POST http://localhost:8080/users \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "alice",
+    "email": "alice@example.com",
+    "password": "s3cur3pass"
+  }'
+```
+
+```json
+{
+  "email": "alice@example.com",
+  "_links": {
+    "self": {
+      "href": "http://localhost:8080/users/alice"
+    },
+    "user": {
+      "href": "http://localhost:8080/users/alice"
+    }
+  }
+}
+```
+
+## Error cases
+
+<AccordionGroup>
+  <Accordion title="400 — Validation failure">
+    Returned when a required field is blank, the email address is not valid, or the password does not meet the length requirement (8–256 characters).
+
+    ```json
+    {
+      "errors": [
+        {
+          "field": "password",
+          "message": "length must be between 8 and 256"
+        }
+      ]
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Username already taken">
+    A user with the same `username` already exists. Usernames are the primary key and must be unique.
+
+    ```json
+    {
+      "status": 409,
+      "error": "Conflict",
+      "message": "Username is already taken"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>

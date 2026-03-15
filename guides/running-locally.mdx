@@ -1,0 +1,101 @@
+---
+title: "Running locally"
+description: "Build and run the First Lego League Backend on your machine using Maven and an in-memory H2 database."
+---
+
+## Prerequisites
+
+Before you begin, make sure the following tools are installed:
+
+- **Java 21+** — the runtime the application requires. [Download from Adoptium](https://adoptium.net).
+- **Maven 3.9+** — used to build, test, and run the project.
+- **Git** — to clone the repository.
+
+<Note>
+  The default local profile uses an **H2 in-memory database**. You do not need PostgreSQL or any other external database to run the app locally. The database is recreated from scratch on every restart.
+</Note>
+
+## Steps
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/UdL-EPS-SoftArch-Igualada/first-lego-league-backend.git
+    cd first-lego-league-backend
+    ```
+  </Step>
+
+  <Step title="Build the project">
+    Run the full Maven build, which compiles the source, runs checkstyle validation, and executes the test suite:
+
+    ```bash
+    mvn package
+    ```
+
+    To skip tests and checkstyle during an initial build:
+
+    ```bash
+    mvn package -DskipTests -Dcheckstyle.skip=true
+    ```
+  </Step>
+
+  <Step title="Start the application">
+    <CodeGroup>
+
+    ```bash Maven CLI
+    mvn spring-boot:run
+    ```
+
+    ```bash IDE (IntelliJ / Eclipse)
+    # Execute the main class directly:
+    # cat.udl.eps.softarch.fll.MainApplication
+    ```
+
+    </CodeGroup>
+
+    The server starts on port `8080`. When startup is complete you will see a line similar to:
+
+    ```
+    Started MainApplication in X.XXX seconds
+    ```
+
+    <Tip>
+      If you are using VSCode, press **F5** from anywhere in the project to start the app in debug mode — no run configuration needed.
+    </Tip>
+  </Step>
+
+  <Step title="Access the API">
+    The REST API is available at `http://localhost:8080`.
+
+    Two interactive browser tools are also available while the server is running:
+
+    - **Swagger UI** — [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)  
+      Explore and call every endpoint directly from the browser.
+    - **HAL Explorer** — [http://localhost:8080/explorer](http://localhost:8080/explorer)  
+      Navigate the hypermedia API by following `_links` from resource to resource.
+
+    <Tip>
+      Use the Swagger UI to explore endpoints interactively without writing any curl commands. You can authenticate, fill in request bodies, and inspect responses all in one place.
+    </Tip>
+  </Step>
+
+  <Step title="Run the tests">
+    The project uses Cucumber BDD tests written in Gherkin. Run the full suite with:
+
+    ```bash
+    mvn test
+    ```
+
+    Test results are written to `target/cucumber-reports/` after the run.
+  </Step>
+</Steps>
+
+## Default credentials
+
+Seeded users created during tests and local development use `password` as their password. This is controlled by the `default-password` property in `application.yml`:
+
+```yaml
+default-password: password
+```
+
+Change this value before running in any environment accessible to others.

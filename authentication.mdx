@@ -1,0 +1,103 @@
+---
+title: "Authentication"
+description: "How to authenticate requests to the First Lego League Backend using HTTP Basic auth."
+---
+
+The API uses **HTTP Basic authentication**. Every request that requires authentication must include a Base64-encoded `username:password` string in the `Authorization` header. The server is stateless — there are no sessions or tokens to manage. Each request must carry credentials independently.
+
+<Warning>
+  HTTP Basic sends credentials with every request. Always use **HTTPS** in production to prevent credentials from being exposed in transit. The production deployment at `https://spring-template.fly.dev` enforces HTTPS.
+</Warning>
+
+## Sending credentials
+
+You can authenticate in two ways:
+
+<CodeGroup>
+
+```bash Using the -u flag (recommended for curl)
+curl -u alice:password https://spring-template.fly.dev/identity
+```
+
+```bash Using the Authorization header directly
+curl -H "Authorization: Basic $(echo -n 'alice:password' | base64)" \
+  https://spring-template.fly.dev/identity
+```
+
+</CodeGroup>
+
+Both forms are equivalent. The `-u` flag is simpler for manual testing; the explicit header form is more appropriate in application code.
+
+## Register a new user
+
+User registration does not require authentication. Send a `POST` to `/users` with a JSON body:
+
+```bash
+curl -X POST http://localhost:8080/users \
+  -H "Content-Type: application/json" \
+  -d '{"username": "alice", "password": "password", "email": "alice@example.com"}'
+```
+
+A successful response returns `201 Created` with the new user resource and its `_links`.
+
+## Get the current user's identity
+
+Once registered, you can confirm your identity by calling `GET /identity`. This endpoint requires authentication and returns the full user resource for the authenticated principal:
+
+```bash
+curl -u alice:password http://localhost:8080/identity
+```
+
+```json
+{
+  "username": "alice",
+  "email": "alice@example.com",
+  "_links": {
+    "self": { "href": "http://localhost:8080/users/alice" },
+    "user": { "href": "http://localhost:8080/users/alice" }
+  }
+}
+```
+
+## Endpoint authentication requirements
+
+The table below summarises which endpoints require authentication, based on the security rules configured in `WebSecurityConfig`.
+
+| Endpoint pattern | Method | Auth required |
+|-----------------|--------|---------------|
+| `/identity` | `GET` | Yes — authenticated users only |
+| `/users` | `GET` | Yes — authenticated users only |
+| `/editions/*/volunteers` | `GET` | Yes — authenticated users only |
+| `/users` | `POST` | No — open for registration |
+| `/matchResults/register` | `POST` | Yes — authenticated users only |
+| `/users/*` | `POST` | Denied for all callers |
+| `/*/*` | `POST` | Yes — authenticated users only |
+| `/*/*` | `PUT` | Yes — authenticated users only |
+| `/*/*` | `PATCH` | Yes — authenticated users only |
+| `/*/*` | `DELETE` | Yes — authenticated users only |
+| All other requests | Any | No — publicly accessible |
+
+<Info>
+  Read-only endpoints (e.g., `GET /editions`, `GET /teams`, `GET /leaderboard`) are public. You only need credentials when creating, updating, deleting resources, or accessing user-specific data.
+</Info>
+
+## Default development credentials
+
+When running locally with the default profile, the application seeds a default password defined in `application.yml`:
+
+```yaml
+default-password: password
+```
+
+Users created during Cucumber test runs use this default password unless overridden.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Register a user" icon="user-plus" href="/api-reference/users/register">
+    Full reference for the POST /users endpoint.
+  </Card>
+  <Card title="Identity endpoint" icon="id-card" href="/api-reference/users/identity">
+    Full reference for GET /identity.
+  </Card>
+</CardGroup>

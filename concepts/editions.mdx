@@ -1,0 +1,76 @@
+---
+title: "Editions"
+description: "An Edition is the central organising entity for a yearly First Lego League competition event. Every team registration, match, volunteer assignment, and leaderboard is scoped to a single edition."
+---
+
+## What is an edition?
+
+An `Edition` represents one running of the competition — typically corresponding to a calendar year. It captures where and when the event takes place and acts as the container that ties teams, matches, and volunteers together.
+
+### Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | `Long` | auto | Auto-generated numeric identifier. |
+| `year` | `Integer` | yes | The competition year (e.g. `2025`). |
+| `venueName` | `String` | yes | Name of the hosting venue. |
+| `description` | `String` | yes | Free-text description of the edition. |
+| `state` | `EditionState` | read-only | Lifecycle state. Always starts as `DRAFT`. |
+| `teams` | `Set<Team>` | — | Teams registered to this edition (max 18). |
+
+<Note>
+The `state` field is read-only in the API. You change it by calling the lifecycle transition endpoint, not by PATCHing the edition resource.
+</Note>
+
+## Lifecycle states
+
+Every edition moves through three states in a strict, one-way sequence.
+
+<Steps>
+  <Step title="DRAFT">
+    The default state when an edition is created. No team registrations are accepted. Use this state to prepare venue details and description before opening.
+  </Step>
+  <Step title="OPEN">
+    Team registration is active. You can register up to 18 teams while the edition is `OPEN`. Matches and volunteers can be managed in this state.
+  </Step>
+  <Step title="CLOSED">
+    The edition has ended. No further transitions are possible. All data is preserved for historical reference.
+  </Step>
+</Steps>
+
+### State transition rules
+
+Transitions are validated by `EditionLifecycleService`. Only the following moves are permitted:
+
+| Current state | Allowed transitions | Rejected transitions |
+|---------------|--------------------|-----------------------|
+| `DRAFT` | → `OPEN` | → `CLOSED` |
+| `OPEN` | → `CLOSED` | → `DRAFT` |
+| `CLOSED` | _(none)_ | → `DRAFT`, → `OPEN` |
+
+Attempting an invalid transition returns `409 Conflict` with error code `INVALID_EDITION_STATE_TRANSITION`.
+
+```json
+{
+  "error": "INVALID_EDITION_STATE_TRANSITION",
+  "message": "Invalid transition from CLOSED to OPEN"
+}
+```
+
+## Operations gated by state
+
+Certain operations are only permitted in specific states. The `EditionOperation` enum controls this:
+
+| Operation | Allowed in state |
+|-----------|------------------|
+| `TEAM_REGISTRATION` | `OPEN` only |
+
+Attempting a gated operation while the edition is in `DRAFT` or `CLOSED` returns `422 Unprocessable Entity` with error code `EDITION_OPERATION_NOT_ALLOWED`.
+
+## Team capacity
+
+An edition can hold a maximum of **18 teams** (`Edition.MAX_TEAMS`). Attempting to register a 19th team returns `409 Conflict` with error code `MAX_TEAMS_REACHED`.
+
+## API reference
+
+To transition an edition's lifecycle state, see the [Edition lifecycle endpoint](/api-reference/editions/lifecycle).

@@ -1,0 +1,95 @@
+---
+title: "Deployment"
+description: "Deploy the First Lego League Backend to production on Fly.io with a PostgreSQL database and the prod Spring profile."
+---
+
+The application is deployed to Fly.io and is publicly accessible at [https://spring-template.fly.dev](https://spring-template.fly.dev).
+
+## Production profile
+
+The app ships with a `prod` Spring profile that configures it for a production environment. Activate it by passing the profile at startup:
+
+<CodeGroup>
+
+```bash Maven
+mvn spring-boot:run -Dspring-boot.run.profiles=prod
+```
+
+```bash JAR
+java -Dspring.profiles.active=prod -jar app.jar
+```
+
+</CodeGroup>
+
+When the `prod` profile is active, the following settings in `application.yml` take effect:
+
+```yaml
+spring:
+  jpa:
+    generate-ddl: true
+  config:
+    activate:
+      on-profile: prod
+
+allowed-origins: "https://www.firstlegoleague.win,https://*.vercel.app,http://localhost:3000"
+
+logging:
+  level:
+    org:
+      hibernate: error
+      springframework.core: error
+      springframework.web: error
+    root: error
+```
+
+`spring.jpa.generate-ddl: true` instructs Hibernate to create or update the schema automatically on startup. All logging is set to `error` level to reduce noise in production logs.
+
+## Environment variables
+
+Set the following environment variables in your production environment (for example, as Fly.io secrets):
+
+| Variable | Description |
+|---|---|
+| `SPRING_DATASOURCE_URL` | JDBC URL for the PostgreSQL database, e.g. `jdbc:postgresql://host:5432/dbname` |
+| `SPRING_DATASOURCE_USERNAME` | Database user |
+| `SPRING_DATASOURCE_PASSWORD` | Database password |
+| `SPRING_MAIL_HOST` | SMTP host for outgoing mail (spring-boot-starter-mail is included as a dependency) |
+| `SPRING_MAIL_PORT` | SMTP port |
+| `SPRING_MAIL_USERNAME` | SMTP username |
+| `SPRING_MAIL_PASSWORD` | SMTP password |
+| `DEFAULT_PASSWORD` | Password assigned to any seeded admin accounts on first run |
+
+<Warning>
+  The API uses HTTP Basic Authentication. Always serve the application over **HTTPS** in production so that credentials are not transmitted in plain text.
+</Warning>
+
+## CORS configuration
+
+Allowed origins are controlled by the `allowed-origins` property. In the `prod` profile this is set to:
+
+```
+https://www.firstlegoleague.win,https://*.vercel.app,http://localhost:3000
+```
+
+To allow additional origins, override the property at startup:
+
+```bash
+java -Dspring.profiles.active=prod \
+     -Dallowed-origins="https://yourdomain.com,http://localhost:3000" \
+     -jar app.jar
+```
+
+For local development the default value is `http://localhost:3000`.
+
+## CI/CD with GitHub Actions
+
+<Note>
+  The repository includes a GitHub Actions workflow at `.github/workflows/ci-cd.yml` that runs on every push and pull request to `main`. It performs the following steps:
+
+  1. Checks out the code.
+  2. Sets up Java 21 (Temurin distribution).
+  3. Runs `mvn -B package`, which includes checkstyle and the full Cucumber BDD test suite.
+  4. Verifies the Docker image builds successfully with `docker build .`.
+
+  Cucumber test results are published to [Cucumber Reports](https://reports.cucumber.io/report-collections/faed8ca5-e474-4a1a-a72a-b8e2a2cd69f0) automatically via the `CUCUMBER_PUBLISH_ENABLED` environment variable.
+</Note>

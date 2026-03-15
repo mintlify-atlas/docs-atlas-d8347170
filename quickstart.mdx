@@ -1,80 +1,155 @@
 ---
 title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+description: "Get the First Lego League Backend API running locally in a few minutes."
 ---
 
-## Get started in three steps
+## Prerequisites
 
-Get your documentation site running locally and make your first customization.
+Before you begin, make sure you have the following installed:
 
-### Step 1: Set up your local environment
+- **Java 21+** — [Download from adoptium.net](https://adoptium.net/)
+- **Maven 3.9+** — [Download from maven.apache.org](https://maven.apache.org/)
+- **Git**
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+<Note>
+  No external database is required for local development. The app uses an H2 in-memory database by default. Data is reset each time the app restarts.
+</Note>
 
-### Step 2: Deploy your changes
+## Get up and running
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/UdL-EPS-SoftArch-Igualada/first-lego-league-backend.git
+    cd first-lego-league-backend
+    ```
+  </Step>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+  <Step title="Build the project">
+    Run the Maven build. This compiles the code, runs Checkstyle linting, and executes the full test suite including Cucumber BDD tests.
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+    ```bash
+    mvn package
+    ```
 
-### Step 3: Go live
+    To skip tests during development:
+    ```bash
+    mvn package -DskipTests
+    ```
+  </Step>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+  <Step title="Start the API server">
+    <CodeGroup>
+      ```bash Maven CLI
+      mvn spring-boot:run
+      ```
+
+      ```bash Java JAR
+      java -jar target/spring-template-0.0.1-SNAPSHOT.jar
+      ```
+    </CodeGroup>
+
+    <Tip>
+      If you're using VSCode, press **F5** from any file to start debugging directly. The IDE will execute `MainApplication::main`.
+    </Tip>
+
+    The server starts on port **8080** by default.
+  </Step>
+
+  <Step title="Verify the API is running">
+    Make a request to list editions — this endpoint is public and requires no authentication:
+
+    ```bash
+    curl http://localhost:8080/editions
+    ```
+
+    You should get a HAL response like:
+
+    ```json
+    {
+      "_embedded": {
+        "editions": []
+      },
+      "_links": {
+        "self": { "href": "http://localhost:8080/editions" },
+        "profile": { "href": "http://localhost:8080/profile/editions" },
+        "search": { "href": "http://localhost:8080/editions/search" }
+      },
+      "page": {
+        "size": 20,
+        "totalElements": 0,
+        "totalPages": 0,
+        "number": 0
+      }
+    }
+    ```
+  </Step>
+
+  <Step title="Explore the API interactively">
+    Open **Swagger UI** in your browser to browse and test all endpoints:
+
+    ```
+    http://localhost:8080/swagger-ui.html
+    ```
+
+    Or use the **HAL Explorer** for navigating the hypermedia API:
+
+    ```
+    http://localhost:8080/explorer
+    ```
+  </Step>
+
+  <Step title="Run the tests">
+    The test suite uses Cucumber BDD with Gherkin feature files. Run all tests with:
+
+    ```bash
+    mvn test
+    ```
+
+    Test results include Cucumber reports. Check `target/surefire-reports/` for details.
+  </Step>
+</Steps>
+
+## Create your first resource
+
+Once the server is running, register a user and create an edition:
+
+### 1. Register a user
+
+```bash
+curl -X POST http://localhost:8080/users \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "email": "admin@example.com", "password": "password"}'
+```
+
+### 2. Create an edition
+
+```bash
+curl -X POST http://localhost:8080/editions \
+  -u admin:password \
+  -H "Content-Type: application/json" \
+  -d '{"year": 2026, "venueName": "Igualada Civic Center", "description": "FLL Igualada 2026 Championship"}'
+```
+
+### 3. View the leaderboard
+
+```bash
+curl http://localhost:8080/leaderboards/editions/1
+```
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Authentication" icon="lock" href="/authentication">
+    Learn how HTTP Basic auth works and which endpoints require it.
+  </Card>
+  <Card title="Core concepts" icon="book" href="/concepts/editions">
+    Understand editions, teams, matches, and the scoring system.
+  </Card>
+  <Card title="API reference" icon="code" href="/api-reference/overview">
+    Full documentation for every endpoint.
+  </Card>
+  <Card title="Docker" icon="docker" href="/guides/docker">
+    Run the app in a container with PostgreSQL.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

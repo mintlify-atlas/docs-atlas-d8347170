@@ -1,0 +1,128 @@
+---
+title: "Register teams to an edition"
+description: "Register a team to an edition using POST /editions/{editionId}/teams/{teamId}. The edition must be in OPEN state."
+---
+
+**POST** `/editions/{editionId}/teams/{teamId}` — authentication required
+
+Registers an existing team to an existing edition. The edition must be in `OPEN` state. An edition can hold a maximum of 18 teams.
+
+## Path parameters
+
+<ParamField path="editionId" type="number" required>
+  Numeric ID of the edition to register the team to.
+</ParamField>
+
+<ParamField path="teamId" type="string" required>
+  The team name (string identifier) of the team to register. Teams are looked up by name.
+</ParamField>
+
+## Response
+
+Returns `201 Created` on success.
+
+<ResponseField name="editionId" type="string" required>
+  String representation of the edition ID.
+</ResponseField>
+
+<ResponseField name="teamId" type="string" required>
+  The team name that was registered.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Always `"REGISTERED"` on success.
+</ResponseField>
+
+## Example
+
+```bash
+curl -X POST http://localhost:8080/editions/1/teams/TeamAlpha \
+  -H "Authorization: Bearer <token>"
+```
+
+```json
+{
+  "editionId": "1",
+  "teamId": "TeamAlpha",
+  "status": "REGISTERED"
+}
+```
+
+## Error cases
+
+<AccordionGroup>
+  <Accordion title="404 — Edition not found">
+    No edition exists with the given `editionId`.
+
+    **Error code:** `EDITION_NOT_FOUND`
+
+    ```json
+    {
+      "error": "EDITION_NOT_FOUND",
+      "message": "Edition with id 99 not found",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/editions/99/teams/TeamAlpha"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="404 — Team not found">
+    No team exists with the given `teamId`.
+
+    **Error code:** `TEAM_NOT_FOUND`
+
+    ```json
+    {
+      "error": "TEAM_NOT_FOUND",
+      "message": "Team with id TeamAlpha not found",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/editions/1/teams/TeamAlpha"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Team already registered">
+    The team is already registered in this edition.
+
+    **Error code:** `TEAM_ALREADY_REGISTERED`
+
+    ```json
+    {
+      "error": "TEAM_ALREADY_REGISTERED",
+      "message": "Team TeamAlpha is already registered in edition 1",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/editions/1/teams/TeamAlpha"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Maximum teams reached">
+    The edition already has 18 registered teams, which is the maximum allowed.
+
+    **Error code:** `MAX_TEAMS_REACHED`
+
+    ```json
+    {
+      "error": "MAX_TEAMS_REACHED",
+      "message": "Edition 1 has reached the maximum of 18 teams",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/editions/1/teams/TeamAlpha"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="422 — Edition not in OPEN state">
+    Team registration is only permitted when the edition is in `OPEN` state. Attempting registration on a `DRAFT` or `CLOSED` edition produces this error.
+
+    **Error code:** `EDITION_OPERATION_NOT_ALLOWED`
+
+    ```json
+    {
+      "error": "EDITION_OPERATION_NOT_ALLOWED",
+      "message": "Operation TEAM_REGISTRATION is not allowed when edition is in state DRAFT",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/editions/1/teams/TeamAlpha"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,120 @@
+---
+title: "Assign match to table"
+description: "Assign a scheduled match to a competition table using POST /matches/{matchId}/assign-table."
+---
+
+**POST** `/matches/{matchId}/assign-table` — authentication required
+
+Assigns the specified match to a competition table. The table must exist and must be free of scheduling conflicts at the match's time window.
+
+<Info>
+  The match must already have both `startTime` and `endTime` set, and `endTime` must be after `startTime`. Use the match creation or scheduling endpoints first.
+</Info>
+
+## Path parameters
+
+<ParamField path="matchId" type="number" required>
+  Numeric ID of the match to assign.
+</ParamField>
+
+## Request body
+
+<ParamField body="tableIdentifier" type="string" required>
+  Identifier of the competition table to assign the match to (e.g. `Table-01`).
+</ParamField>
+
+## Response
+
+Returns `200 OK`.
+
+<ResponseField name="matchId" type="number" required>
+  ID of the match that was updated.
+</ResponseField>
+
+<ResponseField name="tableIdentifier" type="string" required>
+  Identifier of the competition table now assigned to the match.
+</ResponseField>
+
+<ResponseField name="startTime" type="string" required>
+  Match start time formatted as `HH:mm`.
+</ResponseField>
+
+<ResponseField name="endTime" type="string" required>
+  Match end time formatted as `HH:mm`.
+</ResponseField>
+
+## Example
+
+```bash
+curl -X POST http://localhost:8080/matches/42/assign-table \
+  -u admin:admin \
+  -H "Content-Type: application/json" \
+  -d '{"tableIdentifier": "Table-01"}'
+```
+
+```json
+{
+  "matchId": 42,
+  "tableIdentifier": "Table-01",
+  "startTime": "10:00",
+  "endTime": "11:00"
+}
+```
+
+## Error cases
+
+<AccordionGroup>
+  <Accordion title="401 — Unauthenticated">
+    The request was made without credentials. Authentication is required for this endpoint.
+  </Accordion>
+
+  <Accordion title="404 — Match not found">
+    No match exists with the given `matchId`.
+
+    ```json
+    {
+      "error": "Not Found",
+      "message": "Match not found: 99999",
+      "status": 404
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="404 — Table not found">
+    No competition table exists with the given `tableIdentifier`.
+
+    ```json
+    {
+      "error": "Not Found",
+      "message": "Table not found: Table-99",
+      "status": 404
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Table time overlap">
+    Another match is already assigned to this table during the same time window.
+
+    **Error code:** `TABLE_TIME_OVERLAP`
+
+    ```json
+    {
+      "error": "Conflict",
+      "message": "Table has overlapping scheduled match",
+      "status": 409
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="422 — Invalid match schedule">
+    The match is missing `startTime`, missing `endTime`, or `endTime` is not after `startTime`.
+
+    ```json
+    {
+      "error": "Unprocessable Entity",
+      "message": "Match is missing start time",
+      "status": 422
+    }
+    ```
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,119 @@
+---
+title: "Edition lifecycle"
+description: "Transition an edition through its DRAFT → OPEN → CLOSED lifecycle states using PATCH /editions/{editionId}/state."
+---
+
+**PATCH** `/editions/{editionId}/state` — authentication required
+
+Transitions an edition to the specified lifecycle state. Not all transitions are valid — see the table below.
+
+## Valid state transitions
+
+| Current state | Allowed next state |
+| ------------- | ------------------ |
+| `DRAFT`       | `OPEN`             |
+| `OPEN`        | `CLOSED`           |
+| `CLOSED`      | *(none — terminal state)* |
+
+<Warning>
+  Once an edition reaches `CLOSED`, it cannot be transitioned to any other state.
+</Warning>
+
+## Path parameters
+
+<ParamField path="editionId" type="number" required>
+  Numeric ID of the edition to transition.
+</ParamField>
+
+## Request body
+
+<ParamField body="state" type="string" required>
+  Target state. Must be one of `DRAFT`, `OPEN`, or `CLOSED`.
+</ParamField>
+
+## Response
+
+Returns `200 OK` with the transition result.
+
+<ResponseField name="editionId" type="number" required>
+  ID of the edition that was transitioned.
+</ResponseField>
+
+<ResponseField name="previousState" type="string" required>
+  The state the edition was in before the transition. One of `DRAFT`, `OPEN`, `CLOSED`.
+</ResponseField>
+
+<ResponseField name="newState" type="string" required>
+  The state the edition is now in. One of `DRAFT`, `OPEN`, `CLOSED`.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Always `"UPDATED"` on success.
+</ResponseField>
+
+## Example
+
+```bash
+curl -X PATCH http://localhost:8080/editions/1/state \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"state": "OPEN"}'
+```
+
+```json
+{
+  "editionId": 1,
+  "previousState": "DRAFT",
+  "newState": "OPEN",
+  "status": "UPDATED"
+}
+```
+
+## Error cases
+
+<AccordionGroup>
+  <Accordion title="400 — Missing or invalid state value">
+    Returned when the request body is absent or when the `state` field contains a value that is not one of the three valid enum values.
+
+    **Error code:** `INVALID_EDITION_STATE_REQUEST`
+
+    ```json
+    {
+      "error": "INVALID_EDITION_STATE_REQUEST",
+      "message": "Invalid state value. Allowed values: [DRAFT, OPEN, CLOSED]",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/editions/1/state"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="404 — Edition not found">
+    Returned when no edition with the given `editionId` exists.
+
+    **Error code:** `EDITION_NOT_FOUND`
+
+    ```json
+    {
+      "error": "EDITION_NOT_FOUND",
+      "message": "Edition with id 9999 not found",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/editions/9999/state"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Invalid state transition">
+    Returned when the requested transition is not permitted. For example, attempting to move a `CLOSED` edition back to `OPEN`.
+
+    **Error code:** `INVALID_EDITION_STATE_TRANSITION`
+
+    ```json
+    {
+      "error": "INVALID_EDITION_STATE_TRANSITION",
+      "message": "Invalid transition from CLOSED to OPEN",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/editions/1/state"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>

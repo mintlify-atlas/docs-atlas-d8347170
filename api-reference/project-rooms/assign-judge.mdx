@@ -1,0 +1,178 @@
+---
+title: "Assign judge to project room"
+description: "Assign a judge to a project room as manager or panelist using POST /project-rooms/assign-judge."
+---
+
+**POST** `/project-rooms/assign-judge` — no authentication required
+
+Assigns a judge to a project room in one of two roles: `MANAGER` (room lead) or `PANELIST` (panel member). Pass `isManager: true` to assign as manager, or `false` to assign as a panelist.
+
+<Info>
+  A room can have at most one manager and at most three panelists. A judge can hold only one role per room.
+</Info>
+
+## Request body
+
+<ParamField body="roomId" type="string" required>
+  Identifier of the project room (e.g. `ROOM_1`).
+</ParamField>
+
+<ParamField body="judgeId" type="string" required>
+  Numeric string ID of the judge to assign.
+</ParamField>
+
+<ParamField body="isManager" type="boolean" required>
+  Set to `true` to assign the judge as room manager. Set to `false` to assign as a panelist.
+</ParamField>
+
+## Response
+
+Returns `200 OK`.
+
+<ResponseField name="roomId" type="string" required>
+  Identifier of the project room.
+</ResponseField>
+
+<ResponseField name="judgeId" type="string" required>
+  ID of the judge that was assigned.
+</ResponseField>
+
+<ResponseField name="role" type="string" required>
+  The role assigned: `"MANAGER"` or `"PANELIST"`.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Always `"ASSIGNED"` on success.
+</ResponseField>
+
+## Example
+
+<CodeGroup>
+
+```bash assign as manager
+curl -X POST http://localhost:8080/project-rooms/assign-judge \
+  -H "Content-Type: application/json" \
+  -d '{"roomId": "ROOM_1", "judgeId": "10", "isManager": true}'
+```
+
+```bash assign as panelist
+curl -X POST http://localhost:8080/project-rooms/assign-judge \
+  -H "Content-Type: application/json" \
+  -d '{"roomId": "ROOM_2", "judgeId": "20", "isManager": false}'
+```
+
+</CodeGroup>
+
+```json
+{
+  "roomId": "ROOM_1",
+  "judgeId": "10",
+  "role": "MANAGER",
+  "status": "ASSIGNED"
+}
+```
+
+## Error cases
+
+<AccordionGroup>
+  <Accordion title="400 — Invalid judge ID format">
+    The `judgeId` value could not be parsed as a number.
+
+    **Error code:** `INVALID_JUDGE_ID_FORMAT`
+
+    ```json
+    {
+      "error": "INVALID_JUDGE_ID_FORMAT",
+      "message": "Invalid judge ID format",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/project-rooms/assign-judge"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="404 — Room not found">
+    No project room exists with the given `roomId`.
+
+    **Error code:** `ROOM_NOT_FOUND`
+
+    ```json
+    {
+      "error": "ROOM_NOT_FOUND",
+      "message": "Room not found",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/project-rooms/assign-judge"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="404 — Judge not found">
+    No judge exists with the given `judgeId`.
+
+    **Error code:** `JUDGE_NOT_FOUND`
+
+    ```json
+    {
+      "error": "JUDGE_NOT_FOUND",
+      "message": "Judge not found",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/project-rooms/assign-judge"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Room already has a manager">
+    The room already has a manager and `isManager` is `true`.
+
+    **Error code:** `ROOM_ALREADY_HAS_MANAGER`
+
+    ```json
+    {
+      "error": "ROOM_ALREADY_HAS_MANAGER",
+      "message": "This room already has a manager assigned",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/project-rooms/assign-judge"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Maximum panelists reached">
+    The room already has three panelists and `isManager` is `false`.
+
+    **Error code:** `MAX_PANELISTS_REACHED`
+
+    ```json
+    {
+      "error": "MAX_PANELISTS_REACHED",
+      "message": "This room has reached the maximum of 3 panelists",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/project-rooms/assign-judge"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Judge already assigned">
+    The judge is already assigned to this room in any role.
+
+    **Error code:** `JUDGE_ALREADY_ASSIGNED`
+
+    ```json
+    {
+      "error": "JUDGE_ALREADY_ASSIGNED",
+      "message": "This judge is already assigned to this room",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/project-rooms/assign-judge"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Error code reference
+
+| Error code | HTTP status | Description |
+| --- | --- | --- |
+| `INVALID_JUDGE_ID_FORMAT` | 400 | `judgeId` is not a valid numeric string. |
+| `ROOM_NOT_FOUND` | 404 | No room exists with the given `roomId`. |
+| `JUDGE_NOT_FOUND` | 404 | No judge exists with the given `judgeId`. |
+| `ROOM_ALREADY_HAS_MANAGER` | 409 | Room already has a manager and `isManager` is `true`. |
+| `MAX_PANELISTS_REACHED` | 409 | Room already has 3 panelists and `isManager` is `false`. |
+| `JUDGE_ALREADY_ASSIGNED` | 409 | Judge is already assigned to this room in any role. |

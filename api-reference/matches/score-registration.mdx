@@ -1,0 +1,202 @@
+---
+title: "Register match score"
+description: "Submit the final scores for a completed match and trigger automatic ranking recalculation using POST /matchResults/register."
+---
+
+**POST** `/matchResults/register` — authentication required
+
+Records the final score for a match and immediately recalculates the edition ranking. The response confirms both that the result was saved and that the ranking was updated.
+
+<Warning>
+  A result can only be registered once per match. Attempting to register a second result for the same match returns `RESULT_ALREADY_EXISTS`.
+</Warning>
+
+## Request body
+
+<ParamField body="matchId" type="number" required>
+  Numeric ID of the match to record the result for.
+</ParamField>
+
+<ParamField body="score" type="object" required>
+  Score details for both competing teams.
+  <Expandable title="Score properties">
+    <ParamField body="teamAId" type="string" required>
+      ID of the first team (must match one of the teams assigned to the match).
+    </ParamField>
+    <ParamField body="teamBId" type="string" required>
+      ID of the second team (must match the other team assigned to the match).
+    </ParamField>
+    <ParamField body="teamAScore" type="number" required>
+      Score achieved by team A. Must be a non-negative integer.
+    </ParamField>
+    <ParamField body="teamBScore" type="number" required>
+      Score achieved by team B. Must be a non-negative integer.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Response
+
+Returns `200 OK`.
+
+<ResponseField name="matchId" type="number" required>
+  ID of the match for which the result was registered.
+</ResponseField>
+
+<ResponseField name="resultSaved" type="boolean" required>
+  Always `true` when the request succeeds, confirming the result was persisted.
+</ResponseField>
+
+<ResponseField name="rankingUpdated" type="boolean" required>
+  Always `true` when the request succeeds, confirming that the edition ranking was recalculated.
+</ResponseField>
+
+<Info>
+  Ranking recalculation runs synchronously within the same transaction. When `rankingUpdated` is `true`, the updated standings are immediately visible through the leaderboard endpoint.
+</Info>
+
+## Example
+
+```bash
+curl -X POST http://localhost:8080/matchResults/register \
+  -u admin:admin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "matchId": 42,
+    "score": {
+      "teamAId": "TeamA",
+      "teamBId": "TeamB",
+      "teamAScore": 350,
+      "teamBScore": 275
+    }
+  }'
+```
+
+```json
+{
+  "matchId": 42,
+  "resultSaved": true,
+  "rankingUpdated": true
+}
+```
+
+## Error cases
+
+<AccordionGroup>
+  <Accordion title="400 — Invalid score payload">
+    The request body is missing, malformed, or contains `null` values for required fields.
+
+    **Error code:** `INVALID_SCORE_PAYLOAD`
+
+    ```json
+    {
+      "error": "INVALID_SCORE_PAYLOAD",
+      "message": "Invalid score payload",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchResults/register"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="404 — Match not found">
+    No match exists with the given `matchId`.
+
+    **Error code:** `MATCH_NOT_FOUND`
+
+    ```json
+    {
+      "error": "MATCH_NOT_FOUND",
+      "message": "Match with id 99999 does not exist",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchResults/register"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Match not finished">
+    The match does not yet have an `endTime`, meaning it has not finished.
+
+    **Error code:** `MATCH_NOT_FINISHED`
+
+    ```json
+    {
+      "error": "MATCH_NOT_FINISHED",
+      "message": "Match must be finished before registering the result",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchResults/register"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Invalid match state">
+    The match is missing a `startTime`, or the `endTime` is before the `startTime`.
+
+    **Error code:** `INVALID_MATCH_STATE`
+
+    ```json
+    {
+      "error": "INVALID_MATCH_STATE",
+      "message": "Match is not in a valid state for result submission",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchResults/register"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Result already exists">
+    A result has already been registered for this match.
+
+    **Error code:** `RESULT_ALREADY_EXISTS`
+
+    ```json
+    {
+      "error": "RESULT_ALREADY_EXISTS",
+      "message": "A result has already been registered for this match",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchResults/register"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="422 — Invalid score">
+    Both team IDs are the same, or a score value is negative.
+
+    **Error code:** `INVALID_SCORE`
+
+    ```json
+    {
+      "error": "INVALID_SCORE",
+      "message": "Score cannot be negative",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchResults/register"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="422 — Team mismatch">
+    The provided team IDs do not match the teams assigned to the match.
+
+    **Error code:** `TEAM_MISMATCH`
+
+    ```json
+    {
+      "error": "TEAM_MISMATCH",
+      "message": "Provided team IDs do not match the teams assigned to the match",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchResults/register"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Error code reference
+
+| Error code | HTTP status | Description |
+| --- | --- | --- |
+| `INVALID_SCORE_PAYLOAD` | 400 | Request body is missing or malformed. |
+| `MATCH_NOT_FOUND` | 404 | No match exists with the given `matchId`. |
+| `INVALID_MATCH_STATE` | 409 | Match is missing `startTime` or has inconsistent times. |
+| `MATCH_NOT_FINISHED` | 409 | Match does not yet have an `endTime`. |
+| `RESULT_ALREADY_EXISTS` | 409 | A result is already registered for this match. |
+| `INVALID_SCORE` | 422 | Both team IDs are identical, or a score is negative. |
+| `TEAM_MISMATCH` | 422 | Provided team IDs do not match the match's assigned teams. |

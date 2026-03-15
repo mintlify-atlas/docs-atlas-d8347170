@@ -1,0 +1,221 @@
+---
+title: "Search matches"
+description: "Filter matches by time range, table, or round, or look up all matches for a specific team."
+---
+
+Two read endpoints are available for querying matches.
+
+---
+
+## Filter matches
+
+**GET** `/matches/filter` — no authentication required
+
+Returns a paginated list of matches, optionally filtered by start/end time window, competition table, or round.
+
+All query parameters are optional. When none are provided the full match list is returned, subject to pagination.
+
+### Query parameters
+
+<ParamField query="startFrom" type="string">
+  Lower bound of the time window. ISO local time format: `HH:mm:ss`. Only matches whose start time is at or after this value are returned.
+</ParamField>
+
+<ParamField query="endTo" type="string">
+  Upper bound of the time window. ISO local time format: `HH:mm:ss`. Only matches whose start time is at or before this value are returned.
+</ParamField>
+
+<ParamField query="tableId" type="string">
+  Identifier of the competition table (e.g. `Table-01`). Filters to matches assigned to that table.
+</ParamField>
+
+<ParamField query="roundId" type="number">
+  Numeric ID of the round. Filters to matches belonging to that round.
+</ParamField>
+
+<ParamField query="page" type="number" default="0">
+  Zero-based page index.
+</ParamField>
+
+<ParamField query="size" type="number" default="20">
+  Number of items per page.
+</ParamField>
+
+<ParamField query="sort" type="string">
+  Sort expression in Spring Data format, e.g. `startTime,asc`.
+</ParamField>
+
+### Response
+
+Returns `200 OK`.
+
+<ResponseField name="page" type="number" required>
+  Zero-based index of the current page.
+</ResponseField>
+
+<ResponseField name="size" type="number" required>
+  Number of items requested per page.
+</ResponseField>
+
+<ResponseField name="totalElements" type="number" required>
+  Total number of matches across all pages that match the filter.
+</ResponseField>
+
+<ResponseField name="items" type="object[]" required>
+  Matches on the current page.
+  <Expandable title="MatchSearchItemResponse properties">
+    <ResponseField name="matchId" type="string" required>
+      Unique identifier of the match.
+    </ResponseField>
+    <ResponseField name="startTime" type="string" required>
+      Scheduled start time in `HH:mm:ss` format.
+    </ResponseField>
+    <ResponseField name="endTime" type="string" required>
+      Scheduled end time in `HH:mm:ss` format.
+    </ResponseField>
+    <ResponseField name="tableId" type="string" required>
+      Identifier of the competition table the match is assigned to.
+    </ResponseField>
+    <ResponseField name="roundId" type="number" required>
+      Numeric ID of the round this match belongs to.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+<CodeGroup>
+
+```bash filter by time window
+curl "http://localhost:8080/matches/filter?startFrom=09:00:00&endTo=12:00:00&page=0&size=10"
+```
+
+```bash filter by table and round
+curl "http://localhost:8080/matches/filter?tableId=Table-01&roundId=3"
+```
+
+</CodeGroup>
+
+```json
+{
+  "page": 0,
+  "size": 10,
+  "totalElements": 2,
+  "items": [
+    {
+      "matchId": "42",
+      "startTime": "10:00:00",
+      "endTime": "11:00:00",
+      "tableId": "Table-01",
+      "roundId": 3
+    },
+    {
+      "matchId": "43",
+      "startTime": "11:00:00",
+      "endTime": "12:00:00",
+      "tableId": "Table-01",
+      "roundId": 3
+    }
+  ]
+}
+```
+
+### Error cases
+
+<AccordionGroup>
+  <Accordion title="422 — Invalid time range">
+    Returned when `startFrom` is after `endTo`.
+
+    **Error code:** `INVALID_TIME_RANGE`
+
+    ```json
+    {
+      "errorCode": "INVALID_TIME_RANGE",
+      "message": "Start time must not be after end time",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matches/filter"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Find matches by team
+
+**GET** `/matches/search/findByTeam` — no authentication required
+
+Returns all matches in which the given team participates, wrapped in a HAL `_embedded` envelope.
+
+### Query parameters
+
+<ParamField query="team" type="string" required>
+  The resource URI of the team, for example `/teams/TeamA`. This is the URI-style identifier, not a numeric ID.
+</ParamField>
+
+### Response
+
+Returns `200 OK` with a HAL-style response body.
+
+<ResponseField name="_embedded" type="object" required>
+  HAL embedded resource container.
+  <Expandable title="_embedded properties">
+    <ResponseField name="matches" type="object[]" required>
+      Array of match objects for the team.
+      <Expandable title="MatchSearchItemResponse properties">
+        <ResponseField name="matchId" type="string" required>
+          Unique identifier of the match.
+        </ResponseField>
+        <ResponseField name="startTime" type="string" required>
+          Scheduled start time in `HH:mm:ss` format.
+        </ResponseField>
+        <ResponseField name="endTime" type="string" required>
+          Scheduled end time in `HH:mm:ss` format.
+        </ResponseField>
+        <ResponseField name="tableId" type="string" required>
+          Identifier of the competition table.
+        </ResponseField>
+        <ResponseField name="roundId" type="number" required>
+          Numeric ID of the round.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+curl "http://localhost:8080/matches/search/findByTeam?team=/teams/TeamA"
+```
+
+```json
+{
+  "_embedded": {
+    "matches": [
+      {
+        "matchId": "42",
+        "startTime": "10:00:00",
+        "endTime": "11:00:00",
+        "tableId": "Table-01",
+        "roundId": 3
+      }
+    ]
+  }
+}
+```
+
+### Error cases
+
+<AccordionGroup>
+  <Accordion title="404 — Team not found">
+    Returned when no team exists at the given URI.
+
+    ```json
+    {
+      "error": "/teams/TeamX",
+      "message": "The referenced team does not exist"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>

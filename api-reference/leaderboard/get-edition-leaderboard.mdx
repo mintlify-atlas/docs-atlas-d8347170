@@ -1,0 +1,135 @@
+---
+title: "Get edition leaderboard"
+description: "Retrieve the paginated leaderboard for a competition edition, sorted by total score, using GET /leaderboards/editions/{editionId}."
+---
+
+**GET** `/leaderboards/editions/{editionId}` — no authentication required
+
+Returns a paginated, ranked list of teams for the specified edition. Teams are always sorted by `totalScore` descending, then `matchesPlayed` descending, then `teamName` ascending.
+
+<Note>
+  Sorting is fixed and cannot be configured via query parameters. The order is always: highest total score first, then most matches played as a tiebreaker, then team name alphabetically for remaining ties.
+</Note>
+
+## Path parameters
+
+<ParamField path="editionId" type="number" required>
+  Numeric ID of the edition to retrieve the leaderboard for.
+</ParamField>
+
+## Query parameters
+
+<ParamField query="page" type="number" default="0">
+  Zero-based page index. Must be `>= 0`.
+</ParamField>
+
+<ParamField query="size" type="number" default="10">
+  Number of items per page. Must be between `1` and `100` (inclusive).
+</ParamField>
+
+## Response
+
+Returns `200 OK`.
+
+<ResponseField name="editionId" type="number" required>
+  ID of the edition the leaderboard belongs to.
+</ResponseField>
+
+<ResponseField name="page" type="number" required>
+  Zero-based index of the current page.
+</ResponseField>
+
+<ResponseField name="size" type="number" required>
+  Number of items per page as requested.
+</ResponseField>
+
+<ResponseField name="totalElements" type="number" required>
+  Total number of ranked teams across all pages.
+</ResponseField>
+
+<ResponseField name="items" type="object[]" required>
+  Ranked teams on the current page.
+  <Expandable title="LeaderboardItemResponse properties">
+    <ResponseField name="position" type="number" required>
+      Absolute rank position across all pages. Position `1` is the leader. When using page `1` with size `1`, the item at index `0` has position `2`.
+    </ResponseField>
+    <ResponseField name="teamId" type="string" required>
+      Unique identifier of the team.
+    </ResponseField>
+    <ResponseField name="teamName" type="string" required>
+      Display name of the team.
+    </ResponseField>
+    <ResponseField name="totalScore" type="number" required>
+      Sum of the team's scores across all completed matches in the edition.
+    </ResponseField>
+    <ResponseField name="matchesPlayed" type="number" required>
+      Number of matches the team has completed.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example
+
+```bash
+curl "http://localhost:8080/leaderboards/editions/1?page=0&size=10"
+```
+
+```json
+{
+  "editionId": 1,
+  "page": 0,
+  "size": 10,
+  "totalElements": 3,
+  "items": [
+    {
+      "position": 1,
+      "teamId": "TeamA",
+      "teamName": "TeamA",
+      "totalScore": 700,
+      "matchesPlayed": 3
+    },
+    {
+      "position": 2,
+      "teamId": "TeamB",
+      "teamName": "TeamB",
+      "totalScore": 580,
+      "matchesPlayed": 3
+    },
+    {
+      "position": 3,
+      "teamId": "TeamC",
+      "teamName": "TeamC",
+      "totalScore": 410,
+      "matchesPlayed": 2
+    }
+  ]
+}
+```
+
+## Error cases
+
+<AccordionGroup>
+  <Accordion title="400 — Invalid pagination parameters">
+    Returned when `page` is negative, `size` is less than `1`, or `size` is greater than `100`.
+
+    ```json
+    {
+      "status": 400,
+      "error": "Bad Request",
+      "message": "Invalid pagination: page must be >= 0 and size must be between 1 and 100"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="404 — Edition not found">
+    No edition exists with the given `editionId`.
+
+    ```json
+    {
+      "status": 404,
+      "error": "Not Found",
+      "message": "Edition not found: 99999"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,93 @@
+---
+title: "Edition competition tables"
+description: "Retrieve the competition tables and their scheduled matches for an edition using GET /editions/{editionId}/tables."
+---
+
+**GET** `/editions/{editionId}/tables`
+
+Returns all competition tables for the specified edition, each containing the list of scheduled matches assigned to that table. Matches that have not been scheduled (i.e., have no start or end time) are excluded.
+
+<Info>
+  This endpoint does not require authentication.
+</Info>
+
+## Path parameters
+
+<ParamField path="editionId" type="number" required>
+  Numeric ID of the edition.
+</ParamField>
+
+## Response
+
+Returns `200 OK` with an array of competition table objects.
+
+<ResponseField name="" type="object[]" required>
+  Array of competition tables. Each object has the following fields:
+  <Expandable title="EditionCompetitionTableResponse properties" defaultOpen>
+    <ResponseField name="identifier" type="string" required>
+      String identifier of the competition table (e.g., `"TABLE-A"`).
+    </ResponseField>
+    <ResponseField name="matches" type="object[]" required>
+      List of scheduled matches assigned to this table.
+      <Expandable title="EditionTableMatchResponse properties">
+        <ResponseField name="matchId" type="number" required>
+          Numeric ID of the match.
+        </ResponseField>
+        <ResponseField name="startTime" type="string">
+          ISO-8601 formatted start time of the match. `null` if not scheduled.
+        </ResponseField>
+        <ResponseField name="endTime" type="string">
+          ISO-8601 formatted end time of the match. `null` if not scheduled.
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example
+
+```bash
+curl http://localhost:8080/editions/1/tables
+```
+
+```json
+[
+  {
+    "identifier": "TABLE-A",
+    "matches": [
+      {
+        "matchId": 101,
+        "startTime": "2025-03-15T11:00:00",
+        "endTime": "2025-03-15T11:20:00"
+      },
+      {
+        "matchId": 102,
+        "startTime": "2025-03-15T11:20:00",
+        "endTime": "2025-03-15T11:40:00"
+      }
+    ]
+  }
+]
+```
+
+If the edition exists but has no competition tables, an empty array is returned:
+
+```json
+[]
+```
+
+## Error cases
+
+<AccordionGroup>
+  <Accordion title="404 — Edition not found">
+    No edition exists with the given `editionId`. The response body is a plain JSON object (not an `ApiErrorResponse`).
+
+    **Error key:** `EDITION_NOT_FOUND`
+
+    ```json
+    {
+      "error": "EDITION_NOT_FOUND"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>

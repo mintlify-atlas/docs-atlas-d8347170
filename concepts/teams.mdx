@@ -1,0 +1,90 @@
+---
+title: "Teams"
+description: "A Team is a named group of young participants that competes in one or more editions of the First Lego League. Teams carry their own identity across editions and accumulate results in the leaderboard."
+---
+
+## What is a team?
+
+A `Team` is identified by its **name** — a string, not a numeric ID. This means `"LegoStars"` is the canonical reference to a team across every API call, URL path, and relation.
+
+### Fields
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `name` | `String` | 3–50 chars, primary key | Unique display name and identifier. |
+| `city` | `String` | max 100 chars | City the team is based in. |
+| `foundationYear` | `Integer` | ≥ 1998 | Year the team was founded. |
+| `educationalCenter` | `String` | max 100 chars, optional | Affiliated school or educational centre. |
+| `category` | `String` | required | Competition category (e.g. `"Challenge"`). |
+| `inscriptionDate` | `LocalDate` | past or present | Date the team was registered in the system. Set automatically on creation. |
+| `members` | `List<TeamMember>` | max 10 | Individual participants on the team. |
+| `trainedBy` | `Set<Coach>` | max 2 | Coaches assigned to the team. |
+| `floaters` | `Set<Floater>` | max 2 | Floater volunteers supporting the team. |
+| `registeredEditions` | `Set<Edition>` | — | Editions this team has been registered to. |
+
+<Info>
+Because `name` is the primary key, team names must be globally unique. Choose carefully — renaming a team is not supported.
+</Info>
+
+## Team members
+
+A `TeamMember` belongs to exactly one team. Each member has:
+
+| Field | Type | Constraints |
+|-------|------|-------------|
+| `id` | `Long` | auto-generated |
+| `name` | `String` | 2–100 chars |
+| `birthDate` | `LocalDate` | must be in the past |
+| `gender` | `String` | max 20 chars, optional |
+| `tShirtSize` | `String` | max 10 chars, optional |
+| `role` | `String` | max 50 chars, required |
+
+A team can have at most **10 members**. Adding an 11th throws an error.
+
+## Coaches
+
+A `Coach` can train multiple teams and a team can have multiple coaches, subject to these limits:
+
+- A team can have at most **2 coaches**.
+- A coach can train at most **2 teams**.
+
+| Field | Type | Constraints |
+|-------|------|-------------|
+| `id` | `Integer` | auto-generated |
+| `name` | `String` | required |
+| `emailAddress` | `String` | valid email, unique |
+| `phoneNumber` | `String` | optional |
+
+<Warning>
+Assigning a coach to a third team (or assigning a third coach to a team) is rejected with `MAX_TEAMS_PER_COACH_REACHED` or `MAX_COACHES_PER_TEAM_REACHED` respectively.
+</Warning>
+
+## Registering a team to an edition
+
+Team registration is the act of enrolling an existing team into an open edition. You cannot register teams to editions in `DRAFT` or `CLOSED` state.
+
+<Steps>
+  <Step title="Ensure the edition is OPEN">
+    Transition the edition from `DRAFT` to `OPEN` using the lifecycle endpoint. Registration is blocked in any other state.
+  </Step>
+  <Step title="Create the team">
+    Create the team resource at `POST /teams` if it does not already exist.
+  </Step>
+  <Step title="Register the team to the edition">
+    Call `POST /editions/{editionId}/teams/{teamName}`. On success, the response returns `201 Created` with status `"REGISTERED"`.
+  </Step>
+</Steps>
+
+### Registration constraints
+
+| Condition | HTTP status | Error code |
+|-----------|-------------|------------|
+| Edition not found | `404` | `EDITION_NOT_FOUND` |
+| Team not found | `404` | `TEAM_NOT_FOUND` |
+| Team already registered | `409` | `TEAM_ALREADY_REGISTERED` |
+| Edition has 18 teams | `409` | `MAX_TEAMS_REACHED` |
+| Edition is not `OPEN` | `422` | `EDITION_OPERATION_NOT_ALLOWED` |
+
+## API reference
+
+To manage teams and their edition registrations, see the [edition teams endpoint](/api-reference/editions/teams).

@@ -1,0 +1,134 @@
+---
+title: "Scoring"
+description: "The scoring system converts raw match scores into a ranked leaderboard. Scores are registered per match, aggregated into a Ranking per team, and served as a paginated leaderboard sorted by total score."
+---
+
+## Scoring lifecycle
+
+<Steps>
+  <Step title="Match finishes">
+    A match reaches `FINISHED` state — both `startTime` and `endTime` are set and `endTime` is after `startTime`.
+  </Step>
+  <Step title="Register the score">
+    Call the score registration endpoint with the match ID, both team IDs, and their respective scores. The system creates two `MatchResult` records — one per team.
+  </Step>
+  <Step title="Ranking recalculates">
+    After saving the results, `RankingService.recalculateRanking()` runs immediately in the same transaction. It aggregates all `MatchResult` scores across all matches and rewrites the `Ranking` table.
+  </Step>
+  <Step title="Query the leaderboard">
+    The leaderboard endpoint reads directly from the aggregated results, sorted and paginated, and returns the current standings.
+  </Step>
+</Steps>
+
+## MatchResult
+
+A `MatchResult` links a team to a match and records the score that team achieved. Two records are created per match — one for each team.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | `Long` | auto-generated | Identifier. |
+| `score` | `Integer` | ≥ 0 | The score the team achieved in this match. |
+| `match` | `Match` | required | The match the score belongs to. |
+| `team` | `Team` | required | The team that achieved this score. |
+
+The combination of `(match, team)` is unique — you cannot register a second result for the same team in the same match.
+
+<Warning>
+Direct `POST` to the `/matchResults` endpoint is disabled (`405 Method Not Allowed`). You must use the dedicated score registration endpoint to create results.
+</Warning>
+
+### Score registration constraints
+
+| Condition | HTTP status | Error code |
+|-----------|-------------|------------|
+| Match not found | `404` | `MATCH_NOT_FOUND` |
+| Missing or malformed payload | `400` | `INVALID_SCORE_PAYLOAD` |
+| Match has no `startTime` set | `409` | `INVALID_MATCH_STATE` |
+| Match has no `endTime` set | `409` | `MATCH_NOT_FINISHED` |
+| `endTime` is before `startTime` | `409` | `INVALID_MATCH_STATE` |
+| Result already exists for this match | `409` | `RESULT_ALREADY_EXISTS` |
+| Negative score value | `422` | `INVALID_SCORE` |
+| Same team on both sides | `422` | `INVALID_SCORE` |
+| Provided team IDs don't match match teams | `422` | `TEAM_MISMATCH` |
+
+## Ranking
+
+The `Ranking` entity stores a team's cumulative score across all matches in the system.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | `Long` | auto-generated | Identifier. |
+| `team` | `Team` | unique | The team this ranking entry belongs to. |
+| `totalScore` | `Integer` | ≥ 0 | Sum of all `MatchResult` scores for this team. |
+| `position` | `Integer` | ≥ 1 | Rank position, assigned during recalculation. |
+
+`RankingService` deletes all existing `Ranking` rows and recomputes them from scratch every time a match score is registered. The sort order during recalculation is:
+
+1. `totalScore` descending
+2. `team.name` ascending (tiebreaker)
+
+## Leaderboard
+
+The leaderboard endpoint reads `MatchResult` data aggregated at query time and returns it sorted and paginated.
+
+### Sorting order
+
+1. `totalScore` descending — higher score ranks first
+2. `matchesPlayed` descending — more games played ranks higher on a tie
+3. `teamName` ascending — alphabetical order as the final tiebreaker
+
+### Request
+
+```bash
+GET /editions/{editionId}/leaderboard?page=0&size=10
+```
+
+| Parameter | Type | Default | Constraints | Description |
+|-----------|------|---------|-------------|-------------|
+| `page` | `int` | `0` | ≥ 0 | Zero-based page index. |
+| `size` | `int` | — | 1–100 | Number of items per page. |
+
+Requesting `size=0` or `size > 100` returns `400 Bad Request`.
+
+### Response
+
+```json
+{
+  "editionId": 1,
+  "page": 0,
+  "size": 10,
+  "totalElements": 3,
+  "items": [
+    {
+      "position": 1,
+      "teamId": "TeamA",
+      "teamName": "TeamA",
+      "totalScore": 215,
+      "matchesPlayed": 3
+    },
+    {
+      "position": 2,
+      "teamId": "TeamB",
+      "teamName": "TeamB",
+      "totalScore": 180,
+      "matchesPlayed": 2
+    },
+    {
+      "position": 3,
+      "teamId": "TeamC",
+      "teamName": "TeamC",
+      "totalScore": 95,
+      "matchesPlayed": 1
+    }
+  ]
+}
+```
+
+<Tip>
+Use pagination to display the leaderboard incrementally. For example, `page=1&size=1` returns the team in second place with `"position": 2`.
+</Tip>
+
+## API reference
+
+- [Score registration](/api-reference/matches/score-registration) — register final scores for a finished match
+- [Leaderboard](/api-reference/leaderboard/get-edition-leaderboard) — retrieve the paginated ranked standings for an edition

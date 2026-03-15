@@ -1,0 +1,97 @@
+---
+title: "Matches"
+description: "A Match is a head-to-head game between two teams played at a scheduled time on a competition table within a round. Matches are the primary source of data that feeds the leaderboard."
+---
+
+## What is a match?
+
+A `Match` represents a single game between `teamA` and `teamB`. It is always placed inside a `Round` and optionally assigned to a `CompetitionTable`. A match moves from `SCHEDULED` through to `FINISHED` as the event progresses.
+
+### Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `Long` | Auto-generated numeric identifier. |
+| `startTime` | `LocalTime` | Time the match begins. |
+| `endTime` | `LocalTime` | Time the match ends. |
+| `round` | `Round` | The round this match belongs to. |
+| `competitionTable` | `CompetitionTable` | The table where the match is played. |
+| `teamA` | `Team` | First competing team (referenced by name). |
+| `teamB` | `Team` | Second competing team (referenced by name). |
+| `referee` | `Referee` | The referee officiating this match. |
+| `state` | `MatchState` | Current lifecycle state of the match. |
+
+## Match states
+
+| State | Meaning |
+|-------|---------|
+| `SCHEDULED` | The match has been created and is awaiting play. Referee assignment and table assignment happen in this state. |
+| `IN_PROGRESS` | The match is currently being played. |
+| `FINISHED` | The match has ended. Score registration is only possible once both `startTime` and `endTime` are set and `endTime` is after `startTime`. |
+
+<Note>
+A match must have `startTime` and `endTime` set, with `endTime` after `startTime`, before you can register a score. Referee assignment is blocked on `FINISHED` matches.
+</Note>
+
+## Rounds
+
+A `Round` groups a set of matches that occur together in the competition schedule. Each round belongs to an `Edition` and has a unique `number` within that edition.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `Long` | Auto-generated identifier. |
+| `number` | `int` | Unique round number within the edition. |
+| `edition` | `Edition` | The edition this round belongs to. |
+| `matches` | `List<Match>` | Ordered list of matches in this round. |
+
+## Competition tables
+
+A `CompetitionTable` is identified by a string ID (e.g. `"Table-1"`). Multiple matches can be assigned to the same table at different times, subject to no time-overlap constraint.
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | `String` | unique | Human-readable table identifier. |
+| `matches` | `List<Match>` | — | All matches assigned to this table. |
+| `referees` | `List<Referee>` | max 3 | Referees supervising this table. |
+
+### Table assignment rules
+
+- A match can be reassigned from one table to another.
+- Two matches on the same table cannot have overlapping time windows.
+- A match with `endTime` before `startTime` cannot be assigned to any table.
+
+## Referee assignment
+
+You can assign a referee to a single match or in batch across a full round.
+
+<AccordionGroup>
+  <Accordion title="Single assignment">
+    `POST /matches/{matchId}/assign-referee` with the referee ID. The match must be in `SCHEDULED` or `IN_PROGRESS` state (not `FINISHED`) and must not already have a referee.
+  </Accordion>
+  <Accordion title="Batch assignment for a round">
+    `POST /rounds/{roundId}/batch-assign` with a list of `{ matchId, refereeId }` pairs. The entire batch is validated and applied atomically — if any item fails, no assignments are saved.
+  </Accordion>
+</AccordionGroup>
+
+### Assignment constraints
+
+| Condition | HTTP status | Error code |
+|-----------|-------------|------------|
+| Match not found | `404` | `MATCH_NOT_FOUND` |
+| Referee not found | `404` | `REFEREE_NOT_FOUND` |
+| Volunteer is not a `Referee` | `422` | `INVALID_ROLE` |
+| Match already has a referee | `409` | `MATCH_ALREADY_HAS_REFEREE` |
+| Match is `FINISHED` or has no time set | `422` | `INVALID_MATCH_STATE` |
+| Referee has a time-overlapping match | `409` | `AVAILABILITY_CONFLICT` |
+
+## Uniqueness constraint on rivals
+
+The business rules state that a team never plays the same opponent twice within a single edition. This constraint is enforced at match creation time — attempting to schedule a rematch returns an error.
+
+## API reference
+
+See the following API pages for match operations:
+
+- [Match assignment](/api-reference/matches/assignment) — assign referees to matches
+- [Table assignment](/api-reference/matches/table-assignment) — assign matches to competition tables
+- [Score registration](/api-reference/matches/score-registration) — register final scores

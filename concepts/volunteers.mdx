@@ -1,0 +1,115 @@
+---
+title: "Volunteers"
+description: "Volunteers are the people who help run the competition. The system models three distinct volunteer roles — Judge, Referee, and Floater — each with specific responsibilities and assignment rules."
+---
+
+## Volunteer hierarchy
+
+`Volunteer` is an abstract base entity. Every volunteer has a name, unique email address, and phone number. The concrete subtypes add role-specific fields:
+
+```
+Volunteer (abstract)
+├── Judge
+├── Referee
+└── Floater
+```
+
+The base fields shared by all volunteers:
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `id` | `Long` | auto-generated | Numeric identifier. |
+| `name` | `String` | required | Full name. |
+| `emailAddress` | `String` | valid email, unique | Contact email. |
+| `phoneNumber` | `String` | required | Contact phone number. |
+| `edition` | `Edition` | optional | The edition this volunteer is assigned to. |
+
+## Roles
+
+<CardGroup cols={3}>
+  <Card title="Judge" icon="gavel">
+    Evaluates scientific projects presented by teams. Can be assigned to a project room as either a **manager** or a **panelist**.
+  </Card>
+  <Card title="Referee" icon="flag">
+    Officiates matches on competition tables. Can be assigned to supervise a specific `CompetitionTable` (max 3 referees per table).
+  </Card>
+  <Card title="Floater" icon="shuffle">
+    General support role. Floaters assist teams on the competition floor. A team can have at most **2 floaters** assigned to it.
+  </Card>
+</CardGroup>
+
+### Judge
+
+In addition to the base fields, a `Judge` has:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `expert` | `boolean` | Whether the judge has expert status. |
+| `memberOfRoom` | `ProjectRoom` | The project room the judge is assigned to. |
+
+A project room has one manager and up to 3 panelists. Assigning a judge uses the `POST /projectRooms/{roomId}/judges/{judgeId}` endpoint with an `isManager` flag. The following constraints apply:
+
+| Condition | HTTP status | Error code |
+|-----------|-------------|------------|
+| Room not found | `404` | `ROOM_NOT_FOUND` |
+| Judge not found | `404` | `JUDGE_NOT_FOUND` |
+| Room already has a manager | `409` | `ROOM_ALREADY_HAS_MANAGER` |
+| Room already has 3 panelists | `409` | `MAX_PANELISTS_REACHED` |
+| Judge already assigned to this room | `409` | `JUDGE_ALREADY_ASSIGNED` |
+
+### Referee
+
+In addition to the base fields, a `Referee` has:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `expert` | `boolean` | Whether the referee has expert status. |
+| `supervisesTable` | `CompetitionTable` | The competition table the referee supervises. |
+
+Referees are assigned to matches by the [match assignment system](/concepts/matches). A referee cannot be assigned to two matches with overlapping time windows.
+
+### Floater
+
+In addition to the base fields, a `Floater` has:
+
+| Field | Type | Constraints | Description |
+|-------|------|-------------|-------------|
+| `studentCode` | `String` | unique | The student's institutional code. |
+| `assistedTeams` | `Set<Team>` | — | Teams this floater is currently helping. |
+
+A floater can assist multiple teams. A team can have at most **2 floaters** at any one time.
+
+## Role conflict rule
+
+<Warning>
+A person cannot simultaneously hold the **Judge** and **Referee** roles in the same edition. Because each volunteer has a unique `emailAddress` enforced at the database level, the same individual cannot be registered as both. Attempting to create a duplicate email returns a conflict error.
+</Warning>
+
+## Retrieving volunteers by edition
+
+To retrieve all volunteers grouped by type for a specific edition, call:
+
+```bash
+GET /editions/{editionId}/volunteers
+```
+
+The response groups volunteers into three lists:
+
+```json
+{
+  "referees": [ ... ],
+  "judges": [ ... ],
+  "floaters": [ ... ]
+}
+```
+
+This endpoint requires authentication. Unauthenticated requests return `401 Unauthorized`. Requesting a non-existent edition returns `404 Not Found` with error code `EDITION_NOT_FOUND`.
+
+<Tip>
+Use the grouped response to render a per-role volunteer overview for a specific edition without making three separate requests.
+</Tip>
+
+## API reference
+
+- [Edition volunteers](/api-reference/editions/volunteers) — retrieve volunteers grouped by type for an edition
+- [Project rooms — assign judge](/api-reference/project-rooms/assign-judge) — assign a judge to a project room

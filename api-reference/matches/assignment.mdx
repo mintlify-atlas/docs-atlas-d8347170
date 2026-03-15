@@ -1,0 +1,377 @@
+---
+title: "Assign referees to matches"
+description: "Assign a single referee to a match, or batch-assign referees to multiple matches in a round in one request."
+---
+
+Two endpoints handle referee assignment. The single-assignment endpoint is strict and fails atomically. The batch endpoint applies all assignments within a transaction — if any item fails, the entire batch is rolled back.
+
+<Note>
+  Both endpoints require the referee ID to refer to a volunteer with the `Referee` role. Passing a volunteer with a different role (e.g. `Floater`) returns `INVALID_ROLE`.
+</Note>
+
+---
+
+## Assign a single referee
+
+**POST** `/matchAssignments/assign` — authentication required
+
+Assigns one referee to one match.
+
+### Request body
+
+<ParamField body="matchId" type="string" required>
+  Numeric string ID of the match to assign the referee to.
+</ParamField>
+
+<ParamField body="refereeId" type="string" required>
+  Numeric string ID of the referee volunteer.
+</ParamField>
+
+### Response
+
+Returns `200 OK`.
+
+<ResponseField name="matchId" type="string" required>
+  ID of the match that was updated.
+</ResponseField>
+
+<ResponseField name="refereeId" type="string" required>
+  ID of the referee that was assigned.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Always `"ASSIGNED"` on success.
+</ResponseField>
+
+### Example
+
+```bash
+curl -X POST http://localhost:8080/matchAssignments/assign \
+  -u admin:admin \
+  -H "Content-Type: application/json" \
+  -d '{"matchId": "42", "refereeId": "7"}'
+```
+
+```json
+{
+  "matchId": "42",
+  "refereeId": "7",
+  "status": "ASSIGNED"
+}
+```
+
+### Error cases
+
+<AccordionGroup>
+  <Accordion title="400 — Invalid ID format">
+    One or both IDs could not be parsed as a number.
+
+    **Error code:** `INVALID_ID_FORMAT`
+
+    ```json
+    {
+      "error": "INVALID_ID_FORMAT",
+      "message": "Invalid ID format: abc",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchAssignments/assign"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="404 — Match not found">
+    No match exists with the given `matchId`.
+
+    **Error code:** `MATCH_NOT_FOUND`
+
+    ```json
+    {
+      "error": "MATCH_NOT_FOUND",
+      "message": "Match not found: 99999",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchAssignments/assign"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="404 — Referee not found">
+    No volunteer exists with the given `refereeId`.
+
+    **Error code:** `REFEREE_NOT_FOUND`
+
+    ```json
+    {
+      "error": "REFEREE_NOT_FOUND",
+      "message": "Referee not found: 99999",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchAssignments/assign"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Match already has a referee">
+    The match already has a referee assigned.
+
+    **Error code:** `MATCH_ALREADY_HAS_REFEREE`
+
+    ```json
+    {
+      "error": "MATCH_ALREADY_HAS_REFEREE",
+      "message": "Match already has a referee assigned",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchAssignments/assign"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Availability conflict">
+    The referee is already assigned to another match whose time window overlaps.
+
+    **Error code:** `AVAILABILITY_CONFLICT`
+
+    ```json
+    {
+      "error": "AVAILABILITY_CONFLICT",
+      "message": "Referee is already assigned to another overlapping match",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchAssignments/assign"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="422 — Invalid role">
+    The volunteer referenced by `refereeId` does not have the `Referee` role.
+
+    **Error code:** `INVALID_ROLE`
+
+    ```json
+    {
+      "error": "INVALID_ROLE",
+      "message": "Volunteer does not have the Referee role",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchAssignments/assign"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="422 — Invalid match state">
+    The match is finished, or is missing start/end times, making it ineligible for assignment.
+
+    **Error code:** `INVALID_MATCH_STATE`
+
+    ```json
+    {
+      "error": "INVALID_MATCH_STATE",
+      "message": "Match is not in a valid state for referee assignment",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchAssignments/assign"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Batch assign referees
+
+**POST** `/matchAssignments/batch` — authentication required
+
+Assigns referees to multiple matches in a single round within one transaction. If any individual assignment fails, the entire batch is rolled back and no assignments are persisted.
+
+<Warning>
+  All matches in the batch must belong to the round identified by `roundId`. Matches from other rounds are rejected with `INVALID_MATCH_STATE`.
+</Warning>
+
+### Request body
+
+<ParamField body="roundId" type="string" required>
+  Numeric string ID of the round that all matches belong to.
+</ParamField>
+
+<ParamField body="assignments" type="object[]" required>
+  List of referee-to-match assignments to apply.
+  <Expandable title="Assignment item properties">
+    <ParamField body="matchId" type="string" required>
+      Numeric string ID of the match.
+    </ParamField>
+    <ParamField body="refereeId" type="string" required>
+      Numeric string ID of the referee volunteer.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Response
+
+Returns `200 OK` when all assignments succeed.
+
+<ResponseField name="roundId" type="string" required>
+  The round ID that was provided in the request.
+</ResponseField>
+
+<ResponseField name="status" type="string" required>
+  Always `"ASSIGNED"` when all items succeed.
+</ResponseField>
+
+<ResponseField name="processed" type="number" required>
+  Number of assignments that were applied. Equals the length of `assignments`.
+</ResponseField>
+
+<ResponseField name="assignments" type="object[]" required>
+  Result for each input item, in the original request order.
+  <Expandable title="Assignment result item properties">
+    <ResponseField name="matchId" type="string" required>
+      ID of the match.
+    </ResponseField>
+    <ResponseField name="refereeId" type="string" required>
+      ID of the referee.
+    </ResponseField>
+    <ResponseField name="status" type="string" required>
+      Always `"ASSIGNED"` on success.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```bash
+curl -X POST http://localhost:8080/matchAssignments/batch \
+  -u admin:admin \
+  -H "Content-Type: application/json" \
+  -d '{
+    "roundId": "5",
+    "assignments": [
+      {"matchId": "42", "refereeId": "7"},
+      {"matchId": "43", "refereeId": "8"}
+    ]
+  }'
+```
+
+```json
+{
+  "roundId": "5",
+  "status": "ASSIGNED",
+  "processed": 2,
+  "assignments": [
+    {"matchId": "42", "refereeId": "7", "status": "ASSIGNED"},
+    {"matchId": "43", "refereeId": "8", "status": "ASSIGNED"}
+  ]
+}
+```
+
+### Error cases
+
+When a batch item fails, the response uses the error code `BATCH_ASSIGNMENT_FAILED` at the top level. The `details` object identifies which item caused the failure.
+
+<AccordionGroup>
+  <Accordion title="404 — Round not found">
+    No round exists with the given `roundId`.
+
+    **Error code:** `ROUND_NOT_FOUND`
+
+    ```json
+    {
+      "error": "ROUND_NOT_FOUND",
+      "message": "Round not found: 99999",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchAssignments/batch"
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="404 — Match not found in batch">
+    A match referenced in the batch does not exist.
+
+    **Error code:** `BATCH_ASSIGNMENT_FAILED` (cause: `MATCH_NOT_FOUND`)
+
+    ```json
+    {
+      "error": "BATCH_ASSIGNMENT_FAILED",
+      "message": "Assignment failed at index 1",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchAssignments/batch",
+      "details": {
+        "index": 1,
+        "matchId": "99999",
+        "refereeId": "8",
+        "cause": "MATCH_NOT_FOUND"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Duplicate match in batch">
+    The same match ID appears more than once in the `assignments` list.
+
+    **Error code:** `BATCH_ASSIGNMENT_FAILED` (cause: `DUPLICATE_MATCH_IN_BATCH`)
+
+    ```json
+    {
+      "error": "BATCH_ASSIGNMENT_FAILED",
+      "message": "Assignment failed at index 1",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchAssignments/batch",
+      "details": {
+        "index": 1,
+        "matchId": "42",
+        "refereeId": "8",
+        "cause": "DUPLICATE_MATCH_IN_BATCH"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="409 — Intra-batch availability conflict">
+    The same referee is assigned to two overlapping matches within the batch.
+
+    **Error code:** `BATCH_ASSIGNMENT_FAILED` (cause: `AVAILABILITY_CONFLICT`)
+
+    ```json
+    {
+      "error": "BATCH_ASSIGNMENT_FAILED",
+      "message": "Assignment failed at index 1",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchAssignments/batch",
+      "details": {
+        "index": 1,
+        "matchId": "43",
+        "refereeId": "7",
+        "cause": "AVAILABILITY_CONFLICT"
+      }
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="422 — Invalid role in batch">
+    A volunteer referenced in the batch does not have the `Referee` role.
+
+    **Error code:** `BATCH_ASSIGNMENT_FAILED` (cause: `INVALID_ROLE`)
+
+    ```json
+    {
+      "error": "BATCH_ASSIGNMENT_FAILED",
+      "message": "Assignment failed at index 0",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/matchAssignments/batch",
+      "details": {
+        "index": 0,
+        "matchId": "42",
+        "refereeId": "9",
+        "cause": "INVALID_ROLE"
+      }
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Error code reference
+
+| Error code | HTTP status | Description |
+| --- | --- | --- |
+| `INVALID_ID_FORMAT` | 400 | A provided ID string could not be parsed as a number. |
+| `ROUND_NOT_FOUND` | 404 | No round exists with the given `roundId`. |
+| `MATCH_NOT_FOUND` | 404 | No match exists with the given `matchId`. |
+| `REFEREE_NOT_FOUND` | 404 | No volunteer exists with the given `refereeId`. |
+| `MATCH_ALREADY_HAS_REFEREE` | 409 | The match already has a referee assigned. |
+| `AVAILABILITY_CONFLICT` | 409 | The referee has a time overlap with another match. |
+| `DUPLICATE_MATCH_IN_BATCH` | 409 | The same match appears more than once in a batch request. |
+| `INVALID_ROLE` | 422 | The volunteer does not have the `Referee` role. |
+| `INVALID_MATCH_STATE` | 422 | The match is finished or missing schedule times. |

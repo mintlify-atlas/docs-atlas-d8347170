@@ -1,0 +1,135 @@
+---
+title: "Edition volunteers"
+description: "Retrieve all volunteers assigned to an edition, grouped by role (referees, judges, floaters), using GET /editions/{editionId}/volunteers."
+---
+
+**GET** `/editions/{editionId}/volunteers` — authentication required
+
+Returns all volunteers assigned to the edition, grouped into three lists by their role: referees, judges, and floaters.
+
+## Path parameters
+
+<ParamField path="editionId" type="number" required>
+  Numeric ID of the edition.
+</ParamField>
+
+## Response
+
+Returns `200 OK` with the grouped volunteer lists.
+
+<ResponseField name="referees" type="object[]" required>
+  List of referee volunteers assigned to this edition.
+  <Expandable title="VolunteerSummaryResponse properties">
+    <ResponseField name="id" type="number" required>
+      Unique numeric identifier of the volunteer.
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      Full name of the volunteer.
+    </ResponseField>
+    <ResponseField name="emailAddress" type="string" required>
+      Email address of the volunteer.
+    </ResponseField>
+    <ResponseField name="phoneNumber" type="string" required>
+      Phone number of the volunteer.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="judges" type="object[]" required>
+  List of judge volunteers assigned to this edition.
+  <Expandable title="VolunteerSummaryResponse properties">
+    <ResponseField name="id" type="number" required>
+      Unique numeric identifier of the volunteer.
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      Full name of the volunteer.
+    </ResponseField>
+    <ResponseField name="emailAddress" type="string" required>
+      Email address of the volunteer.
+    </ResponseField>
+    <ResponseField name="phoneNumber" type="string" required>
+      Phone number of the volunteer.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="floaters" type="object[]" required>
+  List of floater volunteers assigned to this edition.
+  <Expandable title="VolunteerSummaryResponse properties">
+    <ResponseField name="id" type="number" required>
+      Unique numeric identifier of the volunteer.
+    </ResponseField>
+    <ResponseField name="name" type="string" required>
+      Full name of the volunteer.
+    </ResponseField>
+    <ResponseField name="emailAddress" type="string" required>
+      Email address of the volunteer.
+    </ResponseField>
+    <ResponseField name="phoneNumber" type="string" required>
+      Phone number of the volunteer.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Example
+
+```bash
+curl http://localhost:8080/editions/1/volunteers \
+  -H "Authorization: Bearer <token>"
+```
+
+```json
+{
+  "referees": [
+    {
+      "id": 10,
+      "name": "Maria Garcia",
+      "emailAddress": "maria.garcia@example.com",
+      "phoneNumber": "+34 600 000 001"
+    }
+  ],
+  "judges": [
+    {
+      "id": 20,
+      "name": "Joan Puig",
+      "emailAddress": "joan.puig@example.com",
+      "phoneNumber": "+34 600 000 002"
+    }
+  ],
+  "floaters": [
+    {
+      "id": 30,
+      "name": "Anna Vidal",
+      "emailAddress": "anna.vidal@example.com",
+      "phoneNumber": "+34 600 000 003"
+    }
+  ]
+}
+```
+
+<Info>
+  If the edition exists but has no volunteers of a given type, that list will be present but empty.
+</Info>
+
+## Error cases
+
+<AccordionGroup>
+  <Accordion title="401 — Unauthenticated">
+    The request was made without credentials. Authentication is required for this endpoint.
+  </Accordion>
+
+  <Accordion title="404 — Edition not found">
+    No edition exists with the given `editionId`.
+
+    **Error code:** `EDITION_NOT_FOUND`
+
+    ```json
+    {
+      "error": "EDITION_NOT_FOUND",
+      "message": "Edition with id 999999 not found",
+      "timestamp": "2025-03-15T10:30:00.000Z",
+      "path": "/editions/999999/volunteers"
+    }
+    ```
+  </Accordion>
+</AccordionGroup>

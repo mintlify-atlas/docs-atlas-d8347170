@@ -1,0 +1,63 @@
+---
+title: "Get current user"
+description: "Retrieve the authenticated user's account details using GET /identity."
+---
+
+**GET** `/identity` — authentication required
+
+Returns the full resource representation of the currently authenticated user. This endpoint is useful for two purposes: verifying that credentials are correct, and retrieving the account's details (such as the username and email) without knowing the user's ID in advance.
+
+<Tip>
+  Use this endpoint as a credential check. A `200` response confirms the username and password are valid. A `401` response means the credentials are wrong or missing.
+</Tip>
+
+## Authentication
+
+This API uses HTTP Basic authentication. Pass the username and password with every request using the `Authorization: Basic <base64(username:password)>` header, or using the `-u` flag in curl.
+
+## Response
+
+Returns `200 OK` with the authenticated user's resource in Spring Data REST HAL format.
+
+<ResponseField name="email" type="string" required>
+  The email address of the authenticated user.
+</ResponseField>
+
+<ResponseField name="_links" type="object" required>
+  HAL self-link and related resource links for the user.
+</ResponseField>
+
+<Note>
+  The `password` field is write-only and is never included in response bodies.
+</Note>
+
+## Example
+
+```bash
+curl http://localhost:8080/identity \
+  -u alice:s3cur3pass
+```
+
+```json
+{
+  "email": "alice@example.com",
+  "_links": {
+    "self": {
+      "href": "http://localhost:8080/users/alice"
+    },
+    "user": {
+      "href": "http://localhost:8080/users/alice"
+    }
+  }
+}
+```
+
+## Error cases
+
+<AccordionGroup>
+  <Accordion title="401 — Unauthenticated">
+    The request was made without credentials, or with credentials that do not match any account.
+
+    The server responds with a `WWW-Authenticate: Basic realm=\"demo\"` header prompting for credentials.
+  </Accordion>
+</AccordionGroup>

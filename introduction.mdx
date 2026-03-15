@@ -1,0 +1,99 @@
+---
+title: "Introduction"
+description: "An overview of the First Lego League Backend — what it is, who it's for, and how it works."
+---
+
+The First Lego League Backend is a Spring Boot REST API that powers the FLL Igualada competition platform. It handles all event management and scoring logic so organizers, volunteers, judges, and participants can coordinate efficiently during a live competition.
+
+## Who it's for
+
+<CardGroup cols={2}>
+  <Card title="Organizers & admins" icon="shield">
+    Create and manage competition editions, generate match schedules, configure competition tables and rounds, and view assessment sheets filled out by judges.
+  </Card>
+  <Card title="Judges" icon="clipboard">
+    Get assigned to project evaluation rooms, fill out assessment sheets, and score scientific projects.
+  </Card>
+  <Card title="Referees" icon="flag">
+    Get assigned to matches, record results, and confirm scores on the competition floor.
+  </Card>
+  <Card title="Participants & spectators" icon="eye">
+    View live leaderboards, match schedules, team profiles, and the event multimedia gallery.
+  </Card>
+</CardGroup>
+
+## Features
+
+<CardGroup cols={2}>
+  <Card title="Edition management" icon="calendar">
+    Manage competition editions through DRAFT → OPEN → CLOSED lifecycle states with enforced business rules.
+  </Card>
+  <Card title="Team registration" icon="users">
+    Register up to 18 teams per edition, assign coaches, and track educational center affiliations.
+  </Card>
+  <Card title="Match scheduling" icon="trophy">
+    Schedule matches across rounds and competition tables with a unique matchmaking constraint — a team never plays the same rival twice.
+  </Card>
+  <Card title="Live scoring" icon="star">
+    Register match scores through a dedicated endpoint and automatically recalculate global rankings.
+  </Card>
+  <Card title="Leaderboards" icon="chart-bar">
+    Query per-edition leaderboards reflecting the latest registered results in real time.
+  </Card>
+  <Card title="Volunteer management" icon="hand">
+    Assign judges, referees, and floaters to editions with role conflict validation (a volunteer cannot be both a judge and a referee).
+  </Card>
+  <Card title="Project rooms" icon="door-open">
+    Manage judge panel assignments to project evaluation rooms for the scientific project phase.
+  </Card>
+  <Card title="Multimedia & comments" icon="image">
+    Browse the event photo and video gallery, and post comments as an authenticated user.
+  </Card>
+</CardGroup>
+
+## API style
+
+The API follows the **HAL/HATEOAS** pattern via Spring Data REST. Every response includes an `_links` object with hypermedia controls that describe which actions are available from the current resource — so clients can navigate the API dynamically without hard-coding URLs.
+
+Example response for a team resource:
+
+```json
+{
+  "name": "RoboKids",
+  "_links": {
+    "self": { "href": "http://localhost:8080/teams/1" },
+    "team": { "href": "http://localhost:8080/teams/1" },
+    "edition": { "href": "http://localhost:8080/teams/1/edition" }
+  }
+}
+```
+
+All list endpoints return a `_embedded` wrapper with an `_links.self` and pagination metadata in `page`.
+
+## Explorers and docs
+
+- **Swagger UI** — interactive endpoint explorer at [`/swagger-ui.html`](http://localhost:8080/swagger-ui.html)
+- **HAL Explorer** — visual hypermedia navigator at [`/explorer`](http://localhost:8080/explorer)
+
+## Technology stack
+
+| Component | Technology |
+|-----------|------------|
+| Framework | Spring Boot 4.0 (Java 21) |
+| Persistence | Spring Data JPA + PostgreSQL (production) / H2 (development) |
+| API style | HAL/HATEOAS via Spring Data REST |
+| Auth | HTTP Basic (Spring Security, stateless) |
+| OpenAPI | SpringDoc OpenAPI 3.0 |
+| Tests | Cucumber BDD (Gherkin feature files) |
+| Container | Docker (IBM Semeru JRE 21) |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Run the API locally and make your first request in minutes.
+  </Card>
+  <Card title="API reference" icon="code" href="/api-reference/overview">
+    Browse every endpoint with parameters, request bodies, and example responses.
+  </Card>
+</CardGroup>
